@@ -7,8 +7,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,7 +30,7 @@ class FileGenerationServiceTest {
         String[] boxTexts = {"Box 1", "Box 2", "Box 3"};
         byte[] expectedResult = new byte[]{1, 2, 3, 4, 5};
 
-        when(pptxGeneratorService.generatePptxFromTemplate(title, chartTitle, boxTexts))
+        when(pptxGeneratorService.generatePptxFromTemplate(any(Map.class)))
                 .thenReturn(expectedResult);
 
         // When
@@ -37,6 +39,6 @@ class FileGenerationServiceTest {
         // Then
         assertNotNull(result);
         assertArrayEquals(expectedResult, result);
-        verify(pptxGeneratorService, times(1)).generatePptxFromTemplate(title, chartTitle, boxTexts);
+        verify(pptxGeneratorService, times(1)).generatePptxFromTemplate(any(Map.class));
     }
 }

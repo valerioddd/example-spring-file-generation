@@ -5,6 +5,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -41,6 +43,44 @@ class PptxGeneratorServiceTest {
 
         // When
         byte[] result = pptxGeneratorService.generatePptxFromTemplate(title, chartTitle, boxTexts);
+
+        // Then
+        assertNotNull(result);
+        assertTrue(result.length > 0);
+    }
+
+    @Test
+    void testGeneratePptxWithPlaceholderMap() throws IOException {
+        // Given
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("{TITLE}", "Dynamic Title");
+        placeholders.put("{CHART_TITLE}", "Dynamic Chart");
+        placeholders.put("{BOX1}", "First Box");
+        placeholders.put("{BOX2}", "Second Box");
+        placeholders.put("{BOX3}", "Third Box");
+
+        // When
+        byte[] result = pptxGeneratorService.generatePptxFromTemplate(placeholders);
+
+        // Then
+        assertNotNull(result);
+        assertTrue(result.length > 0);
+        assertEquals('P', (char) result[0]);
+        assertEquals('K', (char) result[1]);
+    }
+
+    @Test
+    void testGeneratePptxWithSamePlaceholderMultipleTimes() throws IOException {
+        // Given - same placeholder can appear multiple times in template
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("{TITLE}", "Repeated Title");
+        placeholders.put("{CHART_TITLE}", "Chart Info");
+        placeholders.put("{BOX1}", "Data 1");
+        placeholders.put("{BOX2}", "Data 2");
+        placeholders.put("{BOX3}", "Data 3");
+
+        // When
+        byte[] result = pptxGeneratorService.generatePptxFromTemplate(placeholders);
 
         // Then
         assertNotNull(result);

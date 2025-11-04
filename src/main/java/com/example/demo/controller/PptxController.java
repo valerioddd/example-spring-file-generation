@@ -2,6 +2,7 @@ package com.example.demo.controller;
 
 import com.example.demo.service.FileGenerationService;
 import com.example.demo.service.HtmlToPptxGeneratorService;
+import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -56,7 +57,7 @@ public class PptxController {
     }
 
     @PostMapping(value = "/generate-pptx-from-html", consumes = "application/json")
-    public ResponseEntity<byte[]> generatePptxFromHtml(@RequestBody HtmlRequest request) {
+    public ResponseEntity<byte[]> generatePptxFromHtml(@Valid @RequestBody HtmlRequest request) {
         try {
             // Validate HTML content
             if (request.getHtml() == null || request.getHtml().isBlank()) {

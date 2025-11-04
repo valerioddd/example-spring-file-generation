@@ -17,10 +17,15 @@ import java.util.List;
 @Service
 public class HtmlToPptxGeneratorService {
 
+    // Page dimensions in points (1 point = 1/72 inch)
+    // 720x540 points = 10x7.5 inches (standard 4:3 aspect ratio)
     private static final int PAGE_WIDTH = 720;
     private static final int PAGE_HEIGHT = 540;
     private static final int MARGIN = 50;
     private static final int CONTENT_WIDTH = PAGE_WIDTH - 2 * MARGIN;
+    
+    // Text estimation constants
+    private static final double CHARS_PER_LINE = 50.0;
 
     public byte[] generatePptxFromHtml(String html) throws IOException {
         XMLSlideShow ppt = new XMLSlideShow();
@@ -150,7 +155,7 @@ public class HtmlToPptxGeneratorService {
         textBox.setShapeType(org.apache.poi.sl.usermodel.ShapeType.RECT);
         
         // Estimate height based on text length and width
-        int estimatedHeight = Math.max(40, (int) (text.length() / 50.0 * fontSize * 1.5));
+        int estimatedHeight = Math.max(40, (int) (text.length() / CHARS_PER_LINE * fontSize * 1.5));
         textBox.setAnchor(new Rectangle(MARGIN, yPosition, CONTENT_WIDTH, estimatedHeight));
         textBox.setFillColor(Color.WHITE);
         textBox.setLineWidth(0.0);

@@ -1,6 +1,7 @@
 package com.example.demo.controller;
 
 import com.example.demo.service.FileGenerationService;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -30,7 +31,7 @@ public class PptxController {
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "presentation.pptx");
+            headers.setContentDisposition(ContentDisposition.attachment().filename("presentation.pptx").build());
             
             return ResponseEntity.ok()
                     .headers(headers)

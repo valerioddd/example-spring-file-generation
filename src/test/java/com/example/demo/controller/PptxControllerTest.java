@@ -32,7 +32,7 @@ class PptxControllerTest {
         // When & Then
         mockMvc.perform(post("/api/files/generate-pptx"))
                 .andExpect(status().isOk())
-                .andExpect(header().string("Content-Disposition", "form-data; name=\"attachment\"; filename=\"presentation.pptx\""))
+                .andExpect(header().string("Content-Disposition", "attachment; filename=\"presentation.pptx\""))
                 .andExpect(content().contentType(MediaType.APPLICATION_OCTET_STREAM))
                 .andExpect(content().bytes(mockPptxData));
     }

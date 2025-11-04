@@ -13,6 +13,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class HtmlToPptxGeneratorService {
@@ -28,11 +29,23 @@ public class HtmlToPptxGeneratorService {
     private static final double CHARS_PER_LINE = 50.0;
 
     public byte[] generatePptxFromHtml(String html) throws IOException {
+        return generatePptxFromHtml(html, null);
+    }
+
+    public byte[] generatePptxFromHtml(String html, Map<String, String> placeholders) throws IOException {
+        // Replace placeholders in HTML if provided
+        String processedHtml = html;
+        if (placeholders != null && !placeholders.isEmpty()) {
+            for (Map.Entry<String, String> entry : placeholders.entrySet()) {
+                processedHtml = processedHtml.replace(entry.getKey(), entry.getValue());
+            }
+        }
+
         XMLSlideShow ppt = new XMLSlideShow();
         ppt.setPageSize(new Dimension(PAGE_WIDTH, PAGE_HEIGHT));
 
         // Parse HTML
-        Document doc = Jsoup.parse(html);
+        Document doc = Jsoup.parse(processedHtml);
 
         // Group content by slides - split on <hr> or create single slide
         List<Element> slideElements = new ArrayList<>();

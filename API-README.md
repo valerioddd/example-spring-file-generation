@@ -75,13 +75,24 @@ The placeholders used are:
 
 **POST** `/api/files/generate-pptx-from-html`
 
-Generate a PPTX presentation by parsing HTML content and mapping HTML tags to native PPTX elements.
+Generate a PPTX presentation by parsing HTML content and mapping HTML tags to native PPTX elements. The HTML templates are stored in the repository (simulating a database), and you provide placeholder values to customize the content.
 
 #### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `html` | String | Yes | HTML content to convert to PPTX |
+| `templateId` | String | No | ID of the HTML template to use (default: "default") |
+| `placeholders` | Object | No | Key-value pairs of placeholders to replace in the HTML template |
+
+#### Default Template
+
+The default template includes the following placeholders:
+
+- `{TITLE}` - Main title on first slide
+- `{DESCRIPTION}` - Description paragraph
+- `{BOX1}`, `{BOX2}`, `{BOX3}` - Three styled content boxes
+- `{SUBTITLE}` - Subtitle on second slide
+- `{ITEM1}`, `{ITEM2}`, `{ITEM3}` - List items
 
 #### Supported HTML Tags
 
@@ -96,28 +107,33 @@ The following HTML tags are mapped to PPTX elements:
 
 #### Example Usage
 
-##### Single slide presentation:
+##### Basic usage with default template:
 ```bash
 curl -X POST "http://localhost:8080/api/files/generate-pptx-from-html" \
   -H "Content-Type: application/json" \
-  -d '{"html":"<html><body><h1>Title</h1><p>This is a paragraph.</p><div class=\"box\">Box content</div></body></html>"}' \
+  -d '{"placeholders":{"{TITLE}":"My Presentation","{DESCRIPTION}":"This is my custom description"}}' \
   --output presentation-from-html.pptx
 ```
 
-##### Multi-slide presentation (using `<hr>` separators):
+##### Complete example with all placeholders:
 ```bash
 curl -X POST "http://localhost:8080/api/files/generate-pptx-from-html" \
   -H "Content-Type: application/json" \
-  -d '{"html":"<html><body><h1>Slide 1</h1><p>First slide content</p><hr><h2>Slide 2</h2><p>Second slide content</p></body></html>"}' \
-  --output multi-slide.pptx
-```
-
-##### With lists:
-```bash
-curl -X POST "http://localhost:8080/api/files/generate-pptx-from-html" \
-  -H "Content-Type: application/json" \
-  -d '{"html":"<html><body><h2>Features</h2><ul><li>Feature 1</li><li>Feature 2</li><li>Feature 3</li></ul></body></html>"}' \
-  --output presentation-with-list.pptx
+  -d '{
+    "templateId": "default",
+    "placeholders": {
+      "{TITLE}": "Sales Report 2024",
+      "{DESCRIPTION}": "Q4 performance overview",
+      "{BOX1}": "Revenue: $1M",
+      "{BOX2}": "Growth: 25%",
+      "{BOX3}": "Customers: 500",
+      "{SUBTITLE}": "Key Achievements",
+      "{ITEM1}": "Launched new product line",
+      "{ITEM2}": "Expanded to 3 new markets",
+      "{ITEM3}": "Improved customer satisfaction"
+    }
+  }' \
+  --output sales-report.pptx
 ```
 
 #### Advantages of HTML Approach

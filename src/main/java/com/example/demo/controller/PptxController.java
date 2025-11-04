@@ -1,8 +1,8 @@
 package com.example.demo.controller;
 
+import com.example.demo.repository.HtmlRepository;
 import com.example.demo.service.FileGenerationService;
 import com.example.demo.service.HtmlToPptxGeneratorService;
-import jakarta.validation.Valid;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -20,10 +20,14 @@ public class PptxController {
 
     private final FileGenerationService fileGenerationService;
     private final HtmlToPptxGeneratorService htmlToPptxGeneratorService;
+    private final HtmlRepository htmlRepository;
 
-    public PptxController(FileGenerationService fileGenerationService, HtmlToPptxGeneratorService htmlToPptxGeneratorService) {
+    public PptxController(FileGenerationService fileGenerationService, 
+                         HtmlToPptxGeneratorService htmlToPptxGeneratorService,
+                         HtmlRepository htmlRepository) {
         this.fileGenerationService = fileGenerationService;
         this.htmlToPptxGeneratorService = htmlToPptxGeneratorService;
+        this.htmlRepository = htmlRepository;
     }
 
     @PostMapping(value = "/generate-pptx", consumes = "application/json")
@@ -57,14 +61,25 @@ public class PptxController {
     }
 
     @PostMapping(value = "/generate-pptx-from-html", consumes = "application/json")
-    public ResponseEntity<byte[]> generatePptxFromHtml(@Valid @RequestBody HtmlRequest request) {
+    public ResponseEntity<byte[]> generatePptxFromHtml(@RequestBody HtmlRequest request) {
         try {
-            // Validate HTML content
-            if (request.getHtml() == null || request.getHtml().isBlank()) {
-                return ResponseEntity.badRequest().build();
+            // Get template ID (default to "default" if not provided)
+            String templateId = request.getTemplateId();
+            if (templateId == null || templateId.isBlank()) {
+                templateId = "default";
             }
 
-            byte[] pptxData = htmlToPptxGeneratorService.generatePptxFromHtml(request.getHtml());
+            // Get HTML template from repository
+            String htmlTemplate = htmlRepository.getTemplate(templateId);
+            if (htmlTemplate == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Generate PPTX with placeholders
+            byte[] pptxData = htmlToPptxGeneratorService.generatePptxFromHtml(
+                htmlTemplate, 
+                request.getPlaceholders()
+            );
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);

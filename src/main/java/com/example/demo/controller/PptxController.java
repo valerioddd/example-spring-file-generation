@@ -35,7 +35,7 @@ public class PptxController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pptxData);
-        } catch (IOException e) {
+        } catch (Exception e) {
             return ResponseEntity.internalServerError().build();
         }
     }

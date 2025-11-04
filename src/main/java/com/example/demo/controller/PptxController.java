@@ -5,9 +5,12 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.io.IOException;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/files")
@@ -19,20 +22,28 @@ public class PptxController {
         this.fileGenerationService = fileGenerationService;
     }
 
-    @PostMapping("/generate-pptx")
-    public ResponseEntity<byte[]> generatePptx(
-            @RequestParam(defaultValue = "Presentazione di Esempio") String title,
-            @RequestParam(defaultValue = "Dati e Grafici") String chartTitle,
-            @RequestParam(defaultValue = "Box 1,Box 2,Box 3") String boxTexts) {
-        
+    @PostMapping(value = "/generate-pptx", consumes = "application/json")
+    public ResponseEntity<byte[]> generatePptx(@RequestBody PptxRequest request) {
         try {
-            String[] boxes = boxTexts.split(",");
+            // apply defaults when request fields are null
+            String title = (request.getTitle() == null || request.getTitle().isBlank()) ? "Presentazione di Esempio" : request.getTitle();
+            String chartTitle = (request.getChartTitle() == null || request.getChartTitle().isBlank()) ? "Dati e Grafici" : request.getChartTitle();
+            List<String> boxesList = request.getBoxTexts();
+            String[] boxes;
+            if (boxesList == null || boxesList.isEmpty()) {
+                boxes = new String[]{"Box 1", "Box 2", "Box 3"};
+            } else {
+                boxes = boxesList.toArray(new String[0]);
+            }
+
             byte[] pptxData = fileGenerationService.generatePptx(title, chartTitle, boxes);
-            
+
             HttpHeaders headers = new HttpHeaders();
+            // Use generic binary stream; client will download because of attachment disposition
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
             headers.setContentDisposition(ContentDisposition.attachment().filename("presentation.pptx").build());
-            
+            headers.setContentLength(pptxData.length);
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pptxData);

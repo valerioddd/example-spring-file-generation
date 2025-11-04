@@ -1,29 +1,46 @@
 package com.example.demo.service;
 
-import org.apache.poi.xslf.usermodel.*;
+import com.example.demo.controller.PptxRequest;
+import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFGroupShape;
+import org.apache.poi.xslf.usermodel.XSLFShape;
+import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
+import org.apache.poi.xslf.usermodel.XSLFTextRun;
+import org.apache.poi.xslf.usermodel.XSLFTextShape;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
-public class PptxGeneratorService {
+public class PptxByPptxTemplateGeneratorService {
 
     public byte[] generatePptxFromTemplate(String title, String chartTitle, String[] boxTexts) throws IOException {
         // Build placeholder map
         Map<String, String> placeholders = new HashMap<>();
         placeholders.put("{TITLE}", title);
         placeholders.put("{CHART_TITLE}", chartTitle);
-        
+
         // Add box placeholders
         for (int i = 0; i < boxTexts.length && i < 3; i++) {
             placeholders.put("{BOX" + (i + 1) + "}", boxTexts[i]);
         }
-        
+
         return generatePptxFromTemplate(placeholders);
+    }
+
+    // convenience overload: accept DTO with defaults (Lombok-managed)
+    public byte[] generatePptxFromTemplate(PptxRequest request) throws IOException {
+        String title = request.getTitle();
+        String chartTitle = request.getChartTitle();
+        List<String> boxes = request.getBoxTexts();
+        String[] boxArray = (boxes == null) ? new String[0] : boxes.toArray(new String[0]);
+        return generatePptxFromTemplate(title, chartTitle, boxArray);
     }
 
     public byte[] generatePptxFromTemplate(Map<String, String> placeholders) throws IOException {
@@ -34,7 +51,7 @@ public class PptxGeneratorService {
             }
 
             XMLSlideShow ppt = new XMLSlideShow(templateStream);
-            
+
             // Process all slides and replace placeholders dynamically
             for (XSLFSlide slide : ppt.getSlides()) {
                 replacePlaceholdersInSlide(slide, placeholders);

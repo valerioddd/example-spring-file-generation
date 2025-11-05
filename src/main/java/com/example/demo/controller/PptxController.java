@@ -36,7 +36,8 @@ public class PptxController {
                 boxes = boxesList.toArray(new String[0]);
             }
 
-            byte[] pptxData = fileGenerationService.generatePptx(title, chartTitle, boxes);
+            byte[] pptxData = fileGenerationService.generatePptx(title, chartTitle, boxes,
+                    request.getNumberOfColumns(), request.getBarChartValues(), request.getLineChartValues());
 
             HttpHeaders headers = new HttpHeaders();
             // Use generic binary stream; client will download because of attachment disposition

@@ -20,6 +20,12 @@ import java.util.Map;
 @Service
 public class PptxByPptxTemplateGeneratorService {
 
+    private final ChartDataModifier chartDataModifier;
+
+    public PptxByPptxTemplateGeneratorService(ChartDataModifier chartDataModifier) {
+        this.chartDataModifier = chartDataModifier;
+    }
+
     public byte[] generatePptxFromTemplate(String title, String chartTitle, String[] boxTexts) throws IOException {
         // Build placeholder map
         Map<String, String> placeholders = new HashMap<>();
@@ -31,7 +37,7 @@ public class PptxByPptxTemplateGeneratorService {
             placeholders.put("{BOX" + (i + 1) + "}", boxTexts[i]);
         }
 
-        return generatePptxFromTemplate(placeholders);
+        return generatePptxFromTemplate(placeholders, null, null, null);
     }
 
     // convenience overload: accept DTO with defaults (Lombok-managed)
@@ -40,10 +46,34 @@ public class PptxByPptxTemplateGeneratorService {
         String chartTitle = request.getChartTitle();
         List<String> boxes = request.getBoxTexts();
         String[] boxArray = (boxes == null) ? new String[0] : boxes.toArray(new String[0]);
-        return generatePptxFromTemplate(title, chartTitle, boxArray);
+        return generatePptxFromTemplate(title, chartTitle, boxArray, 
+                                      request.getNumberOfColumns(),
+                                      request.getBarChartValues(),
+                                      request.getLineChartValues());
+    }
+
+    public byte[] generatePptxFromTemplate(String title, String chartTitle, String[] boxTexts,
+                                         Integer numberOfColumns, List<Double> barChartValues, 
+                                         List<Double> lineChartValues) throws IOException {
+        // Build placeholder map
+        Map<String, String> placeholders = new HashMap<>();
+        placeholders.put("{TITLE}", title);
+        placeholders.put("{CHART_TITLE}", chartTitle);
+
+        // Add box placeholders
+        for (int i = 0; i < boxTexts.length && i < 3; i++) {
+            placeholders.put("{BOX" + (i + 1) + "}", boxTexts[i]);
+        }
+
+        return generatePptxFromTemplate(placeholders, numberOfColumns, barChartValues, lineChartValues);
     }
 
     public byte[] generatePptxFromTemplate(Map<String, String> placeholders) throws IOException {
+        return generatePptxFromTemplate(placeholders, null, null, null);
+    }
+
+    public byte[] generatePptxFromTemplate(Map<String, String> placeholders, Integer numberOfColumns,
+                                         List<Double> barChartValues, List<Double> lineChartValues) throws IOException {
         // Load template from resources
         try (InputStream templateStream = getClass().getClassLoader().getResourceAsStream("templates/presentation-template.pptx")) {
             if (templateStream == null) {
@@ -55,6 +85,17 @@ public class PptxByPptxTemplateGeneratorService {
             // Process all slides and replace placeholders dynamically
             for (XSLFSlide slide : ppt.getSlides()) {
                 replacePlaceholdersInSlide(slide, placeholders);
+            }
+
+            // Update chart data if provided
+            if (numberOfColumns != null && barChartValues != null && lineChartValues != null) {
+                try {
+                    chartDataModifier.updateChartData(ppt, numberOfColumns, barChartValues, lineChartValues);
+                } catch (Exception e) {
+                    // Log error but don't fail the entire generation
+                    System.err.println("Error updating chart data: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
 
             // Write to byte array

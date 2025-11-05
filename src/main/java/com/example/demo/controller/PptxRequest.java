@@ -5,7 +5,6 @@ import java.util.List;
 public class PptxRequest {
     private String title;
     private String chartTitle;
-    // default boxes provided in the DTO (can be overridden by setter / constructor)
     private List<String> boxTexts = List.of("Default box 1", "Default box 2", "Default box 3");
     
     // Chart data fields

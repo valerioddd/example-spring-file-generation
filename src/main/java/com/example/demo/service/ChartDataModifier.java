@@ -2,6 +2,8 @@ package com.example.demo.service;
 
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -21,6 +23,8 @@ import java.util.List;
 @Component
 public class ChartDataModifier {
 
+    private static final Logger logger = LoggerFactory.getLogger(ChartDataModifier.class);
+
     /**
      * Updates chart data in a PPTX byte array (second slide - index 1)
      * 
@@ -33,15 +37,18 @@ public class ChartDataModifier {
     public byte[] updateChartData(byte[] pptxBytes, Integer numberOfColumns, 
                                  List<Double> barChartValues, List<Double> lineChartValues) throws Exception {
         if (numberOfColumns == null || barChartValues == null || lineChartValues == null) {
-            System.out.println("ChartDataModifier: Skipping chart update - one or more parameters are null");
+            logger.debug("Skipping chart update - one or more parameters are null");
             return pptxBytes; // Return unchanged if no chart data provided
         }
 
-        System.out.println("ChartDataModifier: Starting chart update with " + numberOfColumns + " columns");
+        logger.info("Starting chart update with {} columns", numberOfColumns);
 
         // Validate input
         if (barChartValues.size() < numberOfColumns || lineChartValues.size() < numberOfColumns) {
-            throw new IllegalArgumentException("Chart values arrays must have at least numberOfColumns elements");
+            String errorMsg = String.format("Chart values arrays must have at least %d elements. " +
+                "Received: barChartValues=%d, lineChartValues=%d", 
+                numberOfColumns, barChartValues.size(), lineChartValues.size());
+            throw new IllegalArgumentException(errorMsg);
         }
 
         // Open the PPTX package
@@ -58,11 +65,11 @@ public class ChartDataModifier {
             }
             
             if (chartPart == null) {
-                System.out.println("ChartDataModifier: No chart part found");
+                logger.warn("No chart part found in PPTX package");
                 return pptxBytes;
             }
             
-            System.out.println("ChartDataModifier: Found chart part");
+            logger.debug("Found chart part");
 
             // Parse the existing chart XML
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -71,9 +78,9 @@ public class ChartDataModifier {
             Document doc = builder.parse(chartPart.getInputStream());
 
             // Update the chart data
-            System.out.println("ChartDataModifier: Updating bar chart data");
+            logger.debug("Updating bar chart data");
             updateBarChartData(doc, barChartValues, numberOfColumns);
-            System.out.println("ChartDataModifier: Updating line chart data");
+            logger.debug("Updating line chart data");
             updateLineChartData(doc, lineChartValues, numberOfColumns);
 
             // Write back the modified XML to the package part
@@ -85,13 +92,13 @@ public class ChartDataModifier {
                 DOMSource source = new DOMSource(doc);
                 StreamResult result = new StreamResult(out);
                 transformer.transform(source, result);
-                System.out.println("ChartDataModifier: Successfully wrote updated chart data");
+                logger.debug("Successfully wrote updated chart data");
             }
             
             // Write the modified package to a new byte array
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             pkg.save(bos);
-            System.out.println("ChartDataModifier: Package saved successfully");
+            logger.info("Package saved successfully with updated chart data");
             return bos.toByteArray();
         }
     }

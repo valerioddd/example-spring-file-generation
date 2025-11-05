@@ -8,6 +8,8 @@ import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
 import org.apache.poi.xslf.usermodel.XSLFTextRun;
 import org.apache.poi.xslf.usermodel.XSLFTextShape;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayOutputStream;
@@ -19,6 +21,8 @@ import java.util.Map;
 
 @Service
 public class PptxByPptxTemplateGeneratorService {
+
+    private static final Logger logger = LoggerFactory.getLogger(PptxByPptxTemplateGeneratorService.class);
 
     private final ChartDataModifier chartDataModifier;
 
@@ -99,8 +103,7 @@ public class PptxByPptxTemplateGeneratorService {
                     pptxBytes = chartDataModifier.updateChartData(pptxBytes, numberOfColumns, barChartValues, lineChartValues);
                 } catch (Exception e) {
                     // Log error but don't fail the entire generation
-                    System.err.println("Error updating chart data: " + e.getMessage());
-                    e.printStackTrace();
+                    logger.error("Error updating chart data", e);
                 }
             }
 

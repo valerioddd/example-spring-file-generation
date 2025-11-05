@@ -2,6 +2,11 @@ package com.example.demo.service;
 
 import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -17,6 +22,7 @@ import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 
@@ -77,10 +83,14 @@ public class ChartDataModifier {
             DocumentBuilder builder = factory.newDocumentBuilder();
             Document doc = builder.parse(chartPart.getInputStream());
 
-            // Update the chart data
-            logger.debug("Updating bar chart data");
+            // Update the embedded Excel file first
+            logger.debug("Updating embedded Excel file");
+            updateEmbeddedExcelFile(pkg, barChartValues, lineChartValues, numberOfColumns);
+
+            // Update the chart data cache
+            logger.debug("Updating bar chart data cache");
             updateBarChartData(doc, barChartValues, numberOfColumns);
-            logger.debug("Updating line chart data");
+            logger.debug("Updating line chart data cache");
             updateLineChartData(doc, lineChartValues, numberOfColumns);
 
             // Write back the modified XML to the package part
@@ -170,5 +180,97 @@ public class ChartDataModifier {
                 }
             }
         }
+    }
+
+    /**
+     * Updates the embedded Excel file with new chart data
+     * 
+     * @param pkg The OPC package
+     * @param barChartValues Values for the bar chart (row 1 in Excel)
+     * @param lineChartValues Values for the line chart (row 2 in Excel)
+     * @param numberOfColumns Number of data points
+     */
+    private void updateEmbeddedExcelFile(OPCPackage pkg, List<Double> barChartValues, 
+                                        List<Double> lineChartValues, int numberOfColumns) throws Exception {
+        // Find the embedded Excel file - typically /ppt/embeddings/Microsoft_Excel_Binary_Worksheet.xlsb
+        PackagePart excelPart = null;
+        for (PackagePart part : pkg.getParts()) {
+            String partName = part.getPartName().getName();
+            if (partName.startsWith("/ppt/embeddings/") && 
+                (partName.endsWith(".xlsx") || partName.endsWith(".xlsb"))) {
+                excelPart = part;
+                break;
+            }
+        }
+        
+        if (excelPart == null) {
+            logger.warn("No embedded Excel file found in PPTX package");
+            return;
+        }
+        
+        logger.debug("Found embedded Excel file: {}", excelPart.getPartName().getName());
+        
+        // Read the existing Excel file
+        Workbook workbook;
+        try (InputStream is = excelPart.getInputStream()) {
+            workbook = WorkbookFactory.create(is);
+        }
+        
+        // Get the first sheet (Sheet1)
+        Sheet sheet = workbook.getSheetAt(0);
+        
+        // Update or create row 1 (bar chart data) - row index 0
+        Row row1 = sheet.getRow(0);
+        if (row1 == null) {
+            row1 = sheet.createRow(0);
+        }
+        
+        // Update or create row 2 (line chart data) - row index 1
+        Row row2 = sheet.getRow(1);
+        if (row2 == null) {
+            row2 = sheet.createRow(1);
+        }
+        
+        // Clear existing cells beyond numberOfColumns and update with new values
+        for (int i = 0; i < numberOfColumns; i++) {
+            // Update bar chart values in row 1
+            Cell cell1 = row1.getCell(i);
+            if (cell1 == null) {
+                cell1 = row1.createCell(i);
+            }
+            cell1.setCellValue(barChartValues.get(i));
+            
+            // Update line chart values in row 2
+            Cell cell2 = row2.getCell(i);
+            if (cell2 == null) {
+                cell2 = row2.createCell(i);
+            }
+            cell2.setCellValue(lineChartValues.get(i));
+        }
+        
+        // Remove cells beyond numberOfColumns to avoid stale data
+        int lastCellNum1 = row1.getLastCellNum();
+        int lastCellNum2 = row2.getLastCellNum();
+        int lastCellNum = Math.max(lastCellNum1, lastCellNum2);
+        for (int i = numberOfColumns; i < lastCellNum; i++) {
+            Cell cell1 = row1.getCell(i);
+            if (cell1 != null) {
+                row1.removeCell(cell1);
+            }
+            Cell cell2 = row2.getCell(i);
+            if (cell2 != null) {
+                row2.removeCell(cell2);
+            }
+        }
+        
+        logger.debug("Updated Excel file with {} columns", numberOfColumns);
+        
+        // Write the modified workbook back to the package part
+        try (OutputStream out = excelPart.getOutputStream()) {
+            workbook.write(out);
+            logger.debug("Successfully wrote updated Excel file");
+        }
+        
+        workbook.close();
     }
 }

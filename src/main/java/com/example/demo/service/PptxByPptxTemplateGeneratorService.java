@@ -87,10 +87,16 @@ public class PptxByPptxTemplateGeneratorService {
                 replacePlaceholdersInSlide(slide, placeholders);
             }
 
+            // Write to byte array
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            ppt.write(out);
+            ppt.close();
+            byte[] pptxBytes = out.toByteArray();
+
             // Update chart data if provided
             if (numberOfColumns != null && barChartValues != null && lineChartValues != null) {
                 try {
-                    chartDataModifier.updateChartData(ppt, numberOfColumns, barChartValues, lineChartValues);
+                    pptxBytes = chartDataModifier.updateChartData(pptxBytes, numberOfColumns, barChartValues, lineChartValues);
                 } catch (Exception e) {
                     // Log error but don't fail the entire generation
                     System.err.println("Error updating chart data: " + e.getMessage());
@@ -98,11 +104,7 @@ public class PptxByPptxTemplateGeneratorService {
                 }
             }
 
-            // Write to byte array
-            ByteArrayOutputStream out = new ByteArrayOutputStream();
-            ppt.write(out);
-            ppt.close();
-            return out.toByteArray();
+            return pptxBytes;
         }
     }
 

@@ -1,11 +1,7 @@
 package com.example.demo.service;
 
+import org.apache.poi.openxml4j.opc.OPCPackage;
 import org.apache.poi.openxml4j.opc.PackagePart;
-import org.apache.poi.xslf.usermodel.XMLSlideShow;
-import org.apache.poi.xslf.usermodel.XSLFChart;
-import org.apache.poi.xslf.usermodel.XSLFGraphicFrame;
-import org.apache.poi.xslf.usermodel.XSLFShape;
-import org.apache.poi.xslf.usermodel.XSLFSlide;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -18,6 +14,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
 import java.util.List;
 
@@ -25,70 +22,77 @@ import java.util.List;
 public class ChartDataModifier {
 
     /**
-     * Updates chart data in the presentation's second slide (index 1)
+     * Updates chart data in a PPTX byte array (second slide - index 1)
      * 
-     * @param ppt The presentation to modify
+     * @param pptxBytes The PPTX file as byte array
      * @param numberOfColumns Number of data points
      * @param barChartValues Values for the bar chart
      * @param lineChartValues Values for the line chart
+     * @return Modified PPTX file as byte array
      */
-    public void updateChartData(XMLSlideShow ppt, Integer numberOfColumns, 
-                               List<Double> barChartValues, List<Double> lineChartValues) throws Exception {
+    public byte[] updateChartData(byte[] pptxBytes, Integer numberOfColumns, 
+                                 List<Double> barChartValues, List<Double> lineChartValues) throws Exception {
         if (numberOfColumns == null || barChartValues == null || lineChartValues == null) {
-            return; // Skip if no chart data provided
+            System.out.println("ChartDataModifier: Skipping chart update - one or more parameters are null");
+            return pptxBytes; // Return unchanged if no chart data provided
         }
+
+        System.out.println("ChartDataModifier: Starting chart update with " + numberOfColumns + " columns");
 
         // Validate input
         if (barChartValues.size() < numberOfColumns || lineChartValues.size() < numberOfColumns) {
             throw new IllegalArgumentException("Chart values arrays must have at least numberOfColumns elements");
         }
 
-        // Get slide 2 (index 1)
-        List<XSLFSlide> slides = ppt.getSlides();
-        if (slides.size() < 2) {
-            return; // Not enough slides
-        }
-
-        XSLFSlide slide = slides.get(1);
-
-        // Find the chart in the slide
-        XSLFChart chart = null;
-        for (XSLFShape shape : slide.getShapes()) {
-            if (shape instanceof XSLFGraphicFrame) {
-                XSLFGraphicFrame graphicFrame = (XSLFGraphicFrame) shape;
-                if (graphicFrame.hasChart()) {
-                    chart = graphicFrame.getChart();
+        // Open the PPTX package
+        try (ByteArrayInputStream bis = new ByteArrayInputStream(pptxBytes);
+             OPCPackage pkg = OPCPackage.open(bis)) {
+            
+            // Find the chart part - typically /ppt/charts/chart1.xml
+            PackagePart chartPart = null;
+            for (PackagePart part : pkg.getParts()) {
+                if (part.getPartName().getName().equals("/ppt/charts/chart1.xml")) {
+                    chartPart = part;
                     break;
                 }
             }
-        }
+            
+            if (chartPart == null) {
+                System.out.println("ChartDataModifier: No chart part found");
+                return pptxBytes;
+            }
+            
+            System.out.println("ChartDataModifier: Found chart part");
 
-        if (chart == null) {
-            return; // No chart found
-        }
+            // Parse the existing chart XML
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            factory.setNamespaceAware(true);
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document doc = builder.parse(chartPart.getInputStream());
 
-        // Get the underlying package part for the chart
-        PackagePart chartPart = chart.getPackagePart();
+            // Update the chart data
+            System.out.println("ChartDataModifier: Updating bar chart data");
+            updateBarChartData(doc, barChartValues, numberOfColumns);
+            System.out.println("ChartDataModifier: Updating line chart data");
+            updateLineChartData(doc, lineChartValues, numberOfColumns);
 
-        // Parse the existing chart XML
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setNamespaceAware(true);
-        DocumentBuilder builder = factory.newDocumentBuilder();
-        Document doc = builder.parse(chartPart.getInputStream());
-
-        // Update the chart data
-        updateBarChartData(doc, barChartValues, numberOfColumns);
-        updateLineChartData(doc, lineChartValues, numberOfColumns);
-
-        // Write back the modified XML to the package part
-        try (OutputStream out = chartPart.getOutputStream()) {
-            TransformerFactory transformerFactory = TransformerFactory.newInstance();
-            Transformer transformer = transformerFactory.newTransformer();
-            transformer.setOutputProperty(javax.xml.transform.OutputKeys.ENCODING, "UTF-8");
-            transformer.setOutputProperty(javax.xml.transform.OutputKeys.STANDALONE, "yes");
-            DOMSource source = new DOMSource(doc);
-            StreamResult result = new StreamResult(out);
-            transformer.transform(source, result);
+            // Write back the modified XML to the package part
+            try (OutputStream out = chartPart.getOutputStream()) {
+                TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                transformer.setOutputProperty(javax.xml.transform.OutputKeys.ENCODING, "UTF-8");
+                transformer.setOutputProperty(javax.xml.transform.OutputKeys.STANDALONE, "yes");
+                DOMSource source = new DOMSource(doc);
+                StreamResult result = new StreamResult(out);
+                transformer.transform(source, result);
+                System.out.println("ChartDataModifier: Successfully wrote updated chart data");
+            }
+            
+            // Write the modified package to a new byte array
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            pkg.save(bos);
+            System.out.println("ChartDataModifier: Package saved successfully");
+            return bos.toByteArray();
         }
     }
 

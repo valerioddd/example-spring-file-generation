@@ -233,6 +233,12 @@ public class ChartDataModifier {
         
         // Clear existing cells beyond numberOfColumns and update with new values
         for (int i = 0; i < numberOfColumns; i++) {
+            // Validate that we have values for this index (should already be validated, but double-check)
+            if (i >= barChartValues.size() || i >= lineChartValues.size()) {
+                logger.warn("Insufficient values for column {}, skipping", i);
+                break;
+            }
+            
             // Update bar chart values in row 1
             Cell cell1 = row1.getCell(i);
             if (cell1 == null) {
@@ -251,7 +257,8 @@ public class ChartDataModifier {
         // Remove cells beyond numberOfColumns to avoid stale data
         int lastCellNum1 = row1.getLastCellNum();
         int lastCellNum2 = row2.getLastCellNum();
-        int lastCellNum = Math.max(lastCellNum1, lastCellNum2);
+        // getLastCellNum returns -1 if no cells exist, so use 0 as minimum
+        int lastCellNum = Math.max(Math.max(lastCellNum1, lastCellNum2), 0);
         for (int i = numberOfColumns; i < lastCellNum; i++) {
             Cell cell1 = row1.getCell(i);
             if (cell1 != null) {
